@@ -5,7 +5,7 @@ import { buildQueue, gradeAnswer, masteryOf, MASTERY_LABEL } from '../lib/srs'
 import { sample, shuffle, plural, pct } from '../lib/utils'
 import { speak } from '../lib/tts'
 import { sfx } from '../lib/sound'
-import { explainMiss, hasKey, AIError } from '../lib/ai'
+import { explainMiss, hasAi, resolveConfig, AIError } from '../lib/ai'
 import { navigate, Empty, Spinner } from '../components/ui'
 import { StudyHead, Summary, useSessionLog, useCardPool } from '../components/study'
 import { IBrain, ISpeaker, ISpark, ICheck, IX } from '../components/Icons'
@@ -122,7 +122,7 @@ export default function Learn({ id }: { id: string }) {
     if (!q) return
     setCoaching(true)
     try {
-      setCoach(await explainMiss(settings.apiKey, q.card.term, q.card.def, typed || picked || ''))
+      setCoach(await explainMiss(resolveConfig(settings), q.card.term, q.card.def, typed || picked || ''))
     } catch (e) {
       setCoach(e instanceof AIError ? e.message : 'Could not reach Claude.')
     } finally {
@@ -253,7 +253,7 @@ export default function Learn({ id }: { id: string }) {
                 )}
               </div>
 
-              {verdict === 'wrong' && hasKey(settings.apiKey) && (
+              {verdict === 'wrong' && hasAi(settings) && (
                 <div className="mt12">
                   {coach ? (
                     <div className="panel fs14" style={{ padding: 14 }}>{coach}</div>

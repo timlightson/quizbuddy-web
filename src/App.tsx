@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { useRoute, navigate, ToastHost } from './components/ui'
 import {
   IChart, IGear, IHome, IPlus, IFolder, IMenu, IFlame, ISpark,
@@ -11,18 +11,19 @@ import { gradient, initials } from './lib/gradients'
 
 import Landing from './routes/Landing'
 import Dashboard from './routes/Dashboard'
-import Studio from './routes/Studio'
+// The heaviest route, and not needed for first paint.
+const Create = lazy(() => import('./routes/Create'))
 import SetView from './routes/SetView'
-import SetEditor from './routes/SetEditor'
-import Flashcards from './routes/Flashcards'
-import Learn from './routes/Learn'
-import TestMode from './routes/TestMode'
-import Write from './routes/Write'
-import Match from './routes/Match'
-import Meteor from './routes/Meteor'
-import Rush from './routes/Rush'
-import Stats from './routes/Stats'
-import SettingsPage from './routes/Settings'
+const SetEditor = lazy(() => import('./routes/SetEditor'))
+const Flashcards = lazy(() => import('./routes/Flashcards'))
+const Learn = lazy(() => import('./routes/Learn'))
+const TestMode = lazy(() => import('./routes/TestMode'))
+const Write = lazy(() => import('./routes/Write'))
+const Match = lazy(() => import('./routes/Match'))
+const Meteor = lazy(() => import('./routes/Meteor'))
+const Rush = lazy(() => import('./routes/Rush'))
+const Stats = lazy(() => import('./routes/Stats'))
+const SettingsPage = lazy(() => import('./routes/Settings'))
 
 /** Consecutive days with at least one review, counting back from today. */
 export function useStreak(): number {
@@ -191,8 +192,8 @@ function Sidebar({ open, close }: { open: boolean; close: () => void }) {
         <IHome /> Home
         {totalDue > 0 && <span className="side-tag">{totalDue}</span>}
       </button>
-      <button className="side-item" data-on={at('studio')} onClick={() => goTo('/studio')}>
-        <ISpark /> AI Studio
+      <button className="side-item" data-on={at('create') || at('studio')} onClick={() => goTo('/create')}>
+        <ISpark /> Create
       </button>
       <button className="side-item" data-on={at('stats')} onClick={() => goTo('/stats')}>
         <IChart /> Progress
@@ -271,7 +272,7 @@ export default function App() {
   const view = () => {
     const [a, b, c] = seg
     if (!a) return <Dashboard />
-    if (a === 'studio') return <Studio />
+    if (a === 'create' || a === 'studio') return <Create />
     if (a === 'stats') return <Stats />
     if (a === 'settings') return <SettingsPage />
     if (a === 'set' && b) return c === 'edit' ? <SetEditor id={b} /> : <SetView id={b} />
@@ -311,8 +312,8 @@ export default function App() {
           <div className="top">
             <SearchBar />
             <div className="grow" />
-            <button className="btn btn-accent" onClick={() => navigate('/studio')}>
-              <ISpark size={15} /> AI Studio
+            <button className="btn btn-accent" onClick={() => navigate('/create')}>
+              <ISpark size={15} /> Create
             </button>
             <button className="btn btn-icon" aria-label="New set"
                     onClick={() => navigate(`/set/${createSet()}/edit`)}>
@@ -329,7 +330,9 @@ export default function App() {
           </div>
         )}
 
-        {view()}
+        <Suspense fallback={<div className="wrap"><div className="hint">Loading…</div></div>}>
+          {view()}
+        </Suspense>
       </main>
       <ToastHost />
     </div>

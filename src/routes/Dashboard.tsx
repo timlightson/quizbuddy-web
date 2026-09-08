@@ -12,11 +12,11 @@ import { useStreak, useLevel } from '../App'
 const ACTIONS = [
   {
     name: 'Upload a file', icon: IUpload, color: 'linear-gradient(140deg,#7c6cf0,#4aa8ff)',
-    desc: 'Turn a PDF, doc, or photo of your notes into a deck.', cta: 'Upload', to: '/studio',
+    desc: 'Turn a PDF, doc, or photo of your notes into a deck.', cta: 'Upload', to: '/create',
   },
   {
     name: 'Build with AI', icon: ISpark, color: 'linear-gradient(140deg,#2fe0b0,#4aa8ff)',
-    desc: 'Chat your way to the deck you want, then edit it.', cta: 'Create', to: '/studio',
+    desc: 'Chat your way to the deck you want, then edit it.', cta: 'Create', to: '/create',
   },
   {
     name: 'Flashcards', icon: ICards, color: 'linear-gradient(140deg,#fb923c,#ff6b6b)',
@@ -121,7 +121,7 @@ export default function Dashboard() {
           body="Upload a PDF or a photo of your notes and let AI draft the cards, or write them yourself. Everything stays on this device."
           action={
             <div className="row g8">
-              <button className="btn btn-accent btn-lg" onClick={() => navigate('/studio')}>
+              <button className="btn btn-accent btn-lg" onClick={() => navigate('/create')}>
                 <ISpark size={16} /> Upload notes
               </button>
               <button className="btn btn-lg" onClick={() => navigate(`/set/${createSet()}/edit`)}>

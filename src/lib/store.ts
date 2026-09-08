@@ -210,6 +210,10 @@ export const useStore = create<AppState & Actions>()(
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>
         const merged = { ...current, ...p, settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) } }
+        // Older saves stored a single Anthropic key; fold it into the keyring.
+        const st = merged.settings
+        st.aiKeys = { ...(st.aiKeys ?? {}) }
+        if (st.apiKey && !st.aiKeys.anthropic) st.aiKeys.anthropic = st.apiKey
         merged.sets = (merged.sets ?? []).map(s => ({
           ...s,
           cards: (s.cards ?? []).map(c => ({ ...c, mastery: masteryOf(c) })),

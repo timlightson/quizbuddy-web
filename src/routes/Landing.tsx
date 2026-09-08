@@ -181,7 +181,7 @@ export default function Landing() {
   }
   const toStudio = () => {
     setSettings({ onboarded: true })
-    navigate('/studio')
+    navigate('/create')
   }
 
   const cards = sets.reduce((n, s) => n + s.cards.length, 0)

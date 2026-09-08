@@ -3,7 +3,8 @@ import { useStore } from '../lib/store'
 import type { AppState, Settings } from '../lib/types'
 import { LANGS, speak, ttsAvailable } from '../lib/tts'
 import { sfx } from '../lib/sound'
-import { hasKey } from '../lib/ai'
+import { hasAi } from '../lib/ai'
+import { PROVIDERS, providerById, type ProviderId } from '../lib/providers'
 import { download } from '../lib/utils'
 import { toast, useConfirm, Chip } from '../components/ui'
 import { ISun, IMoon, IGear, ISpeaker, IDownload, ITrash, ISpark } from '../components/Icons'
@@ -31,7 +32,8 @@ export default function SettingsPage() {
   const tests = useStore(s => s.tests)
   const days = useStore(s => s.days)
   const { confirm, dialog } = useConfirm()
-  const [keyDraft, setKeyDraft] = useState(settings.apiKey)
+  const provider = providerById(settings.aiProvider)
+  const [keyDraft, setKeyDraft] = useState(settings.aiKeys?.[settings.aiProvider] ?? '')
   const [showKey, setShowKey] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -154,46 +156,149 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <div className="eyebrow mb8 row g8"><ISpark size={13} /> AI features (optional)</div>
+      <div className="eyebrow mb8 row g8"><ISpark size={13} /> AI provider (optional)</div>
       <div className="card card-pad mb24">
         <div className="hint mb16">
-          QuizBuddy works fully without this. Add an Anthropic API key and you also get:
-          generating cards from pasted notes, filling in missing definitions, and an
-          explanation when you miss a card in Learn.
+          Every study feature works without this. Connect any model provider and you also get
+          the Create studio — decks built from your PDFs, slides, and photos — plus definition
+          fill-in and miss explanations. Bring whichever provider you already pay for.
         </div>
-        <div className="field mb12">
-          <label className="label">Anthropic API key</label>
-          <div className="row g8">
-            <input
-              className="input mono grow" type={showKey ? 'text' : 'password'}
-              placeholder="sk-ant-…" value={keyDraft} autoComplete="off" spellCheck={false}
-              onChange={e => setKeyDraft(e.target.value)}
-            />
-            <button className="btn" onClick={() => setShowKey(v => !v)}>
-              {showKey ? 'Hide' : 'Show'}
-            </button>
-          </div>
-        </div>
-        <div className="row g8">
-          <button className="btn btn-accent btn-sm"
-                  disabled={keyDraft === settings.apiKey}
-                  onClick={() => { set({ apiKey: keyDraft.trim() }); toast('Key saved') }}>
-            Save key
-          </button>
-          {hasKey(settings.apiKey) && (
-            <button className="btn btn-sm" onClick={() => { set({ apiKey: '' }); setKeyDraft(''); toast('Key removed') }}>
-              Remove
-            </button>
+
+        <div className="field mb16">
+          <label className="label">Provider</label>
+          <select
+            className="select" value={settings.aiProvider}
+            onChange={e => {
+              const id = e.target.value as ProviderId
+              const def = providerById(id)
+              set({
+                aiProvider: id,
+                aiModel: def.models[0] ?? '',
+                aiBaseUrl: id === 'custom' ? settings.aiBaseUrl : '',
+              })
+              setKeyDraft(settings.aiKeys?.[id] ?? '')
+            }}
+          >
+            {PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          {provider.note && (
+            <div className="hint" style={provider.browserBlocked
+              ? { borderLeft: '2px solid var(--red)', paddingLeft: 10, color: 'var(--red)' }
+              : undefined}>
+              {provider.note}
+            </div>
           )}
-          <span className="hint" style={{ alignSelf: 'center' }}>
-            {hasKey(settings.apiKey) ? 'AI features are on.' : 'AI features are hidden.'}
-          </span>
         </div>
+
+        {(provider.id === 'custom' || provider.id === 'ollama') && (
+          <div className="field mb16">
+            <label className="label">Base URL</label>
+            <input
+              className="input mono" spellCheck={false}
+              placeholder={provider.baseUrl || 'https://your-gateway.example.com/v1'}
+              value={settings.aiBaseUrl}
+              onChange={e => set({ aiBaseUrl: e.target.value.trim() })}
+            />
+            <div className="hint">
+              Anything that speaks OpenAI&rsquo;s /chat/completions. The endpoint must send CORS
+              headers for the browser to reach it.
+            </div>
+          </div>
+        )}
+
+        <div className="field mb16">
+          <label className="label">Model</label>
+          <input
+            className="input mono" spellCheck={false} value={settings.aiModel}
+            placeholder={provider.models[0] ?? 'model-name'}
+            list="model-suggestions"
+            onChange={e => set({ aiModel: e.target.value.trim() })}
+          />
+          <datalist id="model-suggestions">
+            {provider.models.map(m => <option key={m} value={m} />)}
+          </datalist>
+          {provider.models.length > 0 && (
+            <div className="row g6 mt4 wrap-flex">
+              {provider.models.map(m => (
+                <button key={m} className="chip" onClick={() => set({ aiModel: m })}
+                        data-on={settings.aiModel === m}>
+                  {m}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {provider.needsKey && (
+          <>
+            <div className="field mb12">
+              <label className="label">{provider.name} API key</label>
+              <div className="row g8">
+                <input
+                  className="input mono grow" type={showKey ? 'text' : 'password'}
+                  placeholder="Paste your key" value={keyDraft}
+                  autoComplete="off" spellCheck={false}
+                  onChange={e => setKeyDraft(e.target.value)}
+                />
+                <button className="btn" onClick={() => setShowKey(v => !v)}>
+                  {showKey ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {provider.keyUrl && (
+                <div className="hint">
+                  <a className="lp-link" href={provider.keyUrl} target="_blank" rel="noreferrer">
+                    Get a key
+                  </a>
+                </div>
+              )}
+            </div>
+            <div className="row g8 wrap-flex">
+              <button className="btn btn-accent btn-sm"
+                      disabled={keyDraft === (settings.aiKeys?.[settings.aiProvider] ?? '')}
+                      onClick={() => {
+                        set({ aiKeys: { ...settings.aiKeys, [settings.aiProvider]: keyDraft.trim() } })
+                        toast('Key saved')
+                      }}>
+                Save key
+              </button>
+              {(settings.aiKeys?.[settings.aiProvider] ?? '') !== '' && (
+                <button className="btn btn-sm" onClick={() => {
+                  set({ aiKeys: { ...settings.aiKeys, [settings.aiProvider]: '' } })
+                  setKeyDraft(''); toast('Key removed')
+                }}>
+                  Remove
+                </button>
+              )}
+              <span className="hint" style={{ alignSelf: 'center' }}>
+                {hasAi(settings) ? 'AI features are on.' : 'AI features are hidden.'}
+              </span>
+            </div>
+          </>
+        )}
+
+        {!provider.needsKey && (
+          <div className="hint">
+            {hasAi(settings)
+              ? 'AI features are on — no key needed for this provider.'
+              : 'Set a base URL and model above to switch AI features on.'}
+          </div>
+        )}
+
+        <div className="row g8 mt16 wrap-flex">
+          <span className="badge">
+            {provider.pdf ? 'Reads PDFs' : 'No PDF support'}
+          </span>
+          <span className="badge">
+            {provider.images ? 'Reads images' : 'No image support'}
+          </span>
+          {provider.browserBlocked && <span className="badge badge-red">Not browser-reachable</span>}
+        </div>
+
         <div className="hint mt16" style={{ borderLeft: '2px solid var(--amber)', paddingLeft: 12 }}>
-          The key is kept in this browser's local storage and sent straight to Anthropic when you
-          use an AI feature. That means anything running on this page could read it — fine for
-          your own machine, worth knowing before you use a shared computer. Usage is billed to
-          your own Anthropic account.
+          Keys are kept in this browser&rsquo;s local storage and sent straight to the provider you
+          pick. Anything running on this page could read them — fine on your own machine, worth
+          knowing on a shared one. Usage bills to your own account. Keys are stored per provider,
+          so switching back and forth doesn&rsquo;t lose them.
         </div>
       </div>
 

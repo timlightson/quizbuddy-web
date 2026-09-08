@@ -221,7 +221,7 @@ export default function SetView({ id }: { id: string }) {
       </div>
 
       <div className="row g8 mt32 wrap-flex">
-        <button className="btn btn-sm" onClick={() => navigate('/studio')}>
+        <button className="btn btn-sm" onClick={() => navigate('/create')}>
           <ISpark size={14} /> Add cards with AI
         </button>
         <button className="btn btn-sm" onClick={() => {

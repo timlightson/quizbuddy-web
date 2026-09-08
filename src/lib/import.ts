@@ -84,3 +84,11 @@ export function toCSV(cards: Card[]): string {
   const esc = (s: string) => `"${s.replace(/"/g, '""')}"`
   return ['term,definition', ...cards.map(c => `${esc(c.term)},${esc(c.def)}`)].join('\n')
 }
+
+
+/** Read a text-ish file and parse it as term/definition pairs, no model needed. */
+export async function pairsFromFile(file: File): Promise<{ cards: Card[]; opts: ParseOptions }> {
+  const text = await file.text()
+  const opts = detectOptions(text)
+  return { cards: parsePairs(text, opts), opts }
+}

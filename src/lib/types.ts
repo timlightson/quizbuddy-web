@@ -1,3 +1,5 @@
+import type { ProviderId } from './providers'
+
 export type ID = string
 
 /** A single flashcard. `term` is the prompt side, `def` the answer side. */
@@ -79,7 +81,13 @@ export interface Settings {
   askWith: 'term' | 'def' | 'both'
   soundEnabled: boolean
   newPerSession: number
+  /** Legacy single-key field; migrated into aiKeys.anthropic on load. */
   apiKey: string
+  aiProvider: ProviderId
+  /** One key per provider, so switching back doesn't lose the old one. */
+  aiKeys: Record<string, string>
+  aiModel: string
+  aiBaseUrl: string
   /** Cleared once the visitor leaves the landing page for the app. */
   onboarded: boolean
 }
@@ -105,6 +113,10 @@ export const DEFAULT_SETTINGS: Settings = {
   soundEnabled: true,
   newPerSession: 12,
   apiKey: '',
+  aiProvider: 'anthropic',
+  aiKeys: {},
+  aiModel: 'claude-opus-5',
+  aiBaseUrl: '',
   onboarded: false,
 }
 

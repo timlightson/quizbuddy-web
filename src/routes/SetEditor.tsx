@@ -7,7 +7,7 @@ import {
   type ColSep, type ParseOptions, type RowSep,
 } from '../lib/import'
 import { LANGS } from '../lib/tts'
-import { cardsFromNotes, defineTerms, hasKey, AIError } from '../lib/ai'
+import { defineTerms, hasAi, resolveConfig, AIError } from '../lib/ai'
 import { plural } from '../lib/utils'
 import { navigate, Modal, AutoText, toast, useConfirm, Spinner } from '../components/ui'
 import { IPlus, ITrash, IStar, ISpark, IUp, ICheck, IList } from '../components/Icons'
@@ -107,74 +107,11 @@ function ImportModal({ onClose, onAdd }: { onClose: () => void; onAdd: (cards: C
   )
 }
 
-/* ---------------- AI generate ---------------- */
-
-function GenerateModal({
-  apiKey, subject, onClose, onAdd,
-}: {
-  apiKey: string; subject: string; onClose: () => void
-  onAdd: (cards: Card[]) => void
-}) {
-  const [notes, setNotes] = useState('')
-  const [count, setCount] = useState(15)
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState('')
-
-  const run = async () => {
-    setBusy(true); setErr('')
-    try {
-      const cards = await cardsFromNotes(apiKey, notes, count, subject)
-      if (!cards.length) { setErr('No cards came back. Try longer or clearer notes.'); return }
-      onAdd(cards)
-      toast(`Added ${plural(cards.length, 'card')}`)
-      onClose()
-    } catch (e) {
-      setErr(e instanceof AIError ? e.message : 'Something went wrong.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Modal
-      title="Generate from notes"
-      sub="Paste lecture notes, a textbook section, or an outline."
-      wide
-      onClose={onClose}
-      footer={
-        <>
-          <button className="btn" onClick={onClose} disabled={busy}>Cancel</button>
-          <button className="btn btn-accent" onClick={run} disabled={busy || notes.trim().length < 40}>
-            {busy ? <><Spinner /> Writing cards…</> : <><ISpark size={15} /> Generate</>}
-          </button>
-        </>
-      }
-    >
-      <div className="field mb16">
-        <label className="label">Source material</label>
-        <textarea className="textarea" style={{ minHeight: 200 }}
-                  placeholder="Paste your notes here…"
-                  value={notes} onChange={e => setNotes(e.target.value)} autoFocus />
-        <div className="hint">{notes.trim().length} characters — 40 minimum.</div>
-      </div>
-      <div className="field mb16" style={{ maxWidth: 220 }}>
-        <label className="label">Roughly how many cards</label>
-        <input className="input num" type="number" min={3} max={60} value={count}
-               onChange={e => setCount(Math.max(3, Math.min(60, +e.target.value || 15)))} />
-      </div>
-      {err && <div className="panel fs13" style={{ padding: 12, color: 'var(--red)' }}>{err}</div>}
-      <div className="hint">
-        Generated cards land in the editor for you to check before you study them.
-      </div>
-    </Modal>
-  )
-}
-
 /* ---------------- Editor ---------------- */
 
 export default function SetEditor({ id }: { id: string }) {
   const set = useStore(s => s.sets.find(x => x.id === id))
-  const apiKey = useStore(s => s.settings.apiKey)
+  const settings = useStore(s => s.settings)
   const updateSet = useStore(s => s.updateSet)
   const updateCard = useStore(s => s.updateCard)
   const removeCard = useStore(s => s.removeCard)
@@ -185,7 +122,6 @@ export default function SetEditor({ id }: { id: string }) {
   const { confirm, dialog } = useConfirm()
 
   const [showImport, setShowImport] = useState(false)
-  const [showGen, setShowGen] = useState(false)
   const [defining, setDefining] = useState(false)
 
   if (!set) { navigate('/'); return null }
@@ -195,7 +131,7 @@ export default function SetEditor({ id }: { id: string }) {
   const fillDefs = async () => {
     setDefining(true)
     try {
-      const map = await defineTerms(apiKey, blanks.map(c => c.term.trim()), set.subject)
+      const map = await defineTerms(resolveConfig(settings), blanks.map(c => c.term.trim()), set.subject)
       let n = 0
       for (const c of blanks) {
         const def = map.get(c.term.trim().toLowerCase())
@@ -217,11 +153,9 @@ export default function SetEditor({ id }: { id: string }) {
           <button className="btn" onClick={() => setShowImport(true)}>
             <IList size={15} /> Import
           </button>
-          {hasKey(apiKey) && (
-            <button className="btn" onClick={() => setShowGen(true)}>
-              <ISpark size={15} /> Generate
-            </button>
-          )}
+          <button className="btn" onClick={() => navigate(`/create?set=${set.id}`)}>
+            <ISpark size={15} /> Add with AI
+          </button>
           <button className="btn btn-primary" onClick={() => navigate(`/set/${set.id}`)}>
             <ICheck size={15} /> Done
           </button>
@@ -262,7 +196,7 @@ export default function SetEditor({ id }: { id: string }) {
         </div>
       </div>
 
-      {hasKey(apiKey) && blanks.length > 0 && (
+      {hasAi(settings) && blanks.length > 0 && (
         <div className="card card-pad mb16 row-between wrap-flex" style={{ borderColor: 'var(--accent-line)' }}>
           <div>
             <div className="h3">{plural(blanks.length, 'term')} without a definition</div>
@@ -331,13 +265,6 @@ export default function SetEditor({ id }: { id: string }) {
       {showImport && (
         <ImportModal
           onClose={() => setShowImport(false)}
-          onAdd={cards => addCards(set.id, cards)}
-        />
-      )}
-      {showGen && (
-        <GenerateModal
-          apiKey={apiKey} subject={set.subject}
-          onClose={() => setShowGen(false)}
           onAdd={cards => addCards(set.id, cards)}
         />
       )}
