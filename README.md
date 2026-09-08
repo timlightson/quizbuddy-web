@@ -1,6 +1,6 @@
 # QuizBuddy
 
-**[Open the app →](https://timlightson.github.io/quizbuddy/)**
+**[Open the app →](https://timlightson.github.io/quizbuddy-web/)**
 
 A study app you own. Flashcards, adaptive learning, generated tests, and three
 games — with real spaced repetition underneath. No ads, no account, no paywall,

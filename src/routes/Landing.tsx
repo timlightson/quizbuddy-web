@@ -6,7 +6,7 @@ import {
   IChevR, ITarget, IList, IFlame,
 } from '../components/Icons'
 
-const REPO = 'https://github.com/timlightson/quizbuddy'
+const REPO = 'https://github.com/timlightson/quizbuddy-web'
 
 const FEATURES = [
   {
