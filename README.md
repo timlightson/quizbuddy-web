@@ -89,6 +89,13 @@ pay for — or run one locally and pay nobody:
 
 Keys are stored per provider, so switching back and forth doesn't lose them.
 
+**Model names are fetched from the provider, not hardcoded.** Save a key and the
+model field becomes a real list of what that key can actually run — because
+providers retire models (Google pulled `gemini-2.5-pro` for new keys, and the
+same model is still live on OpenRouter, so availability is per-provider *and*
+per-key). If a model you had saved disappears, QuizBuddy notices on the next
+refresh and moves you to one that exists rather than failing on every call.
+
 > **OpenAI is listed but not directly reachable.** `api.openai.com` sends no CORS
 > headers, so no browser app can call it — including this one. It's marked as
 > such in Settings. Reach GPT models through OpenRouter, or point the Custom

@@ -1,12 +1,12 @@
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from '../lib/store'
 import type { AppState, Settings } from '../lib/types'
 import { LANGS, speak, ttsAvailable } from '../lib/tts'
 import { sfx } from '../lib/sound'
-import { hasAi } from '../lib/ai'
-import { PROVIDERS, providerById, type ProviderId } from '../lib/providers'
+import { hasAi, resolveConfig } from '../lib/ai'
+import { AiError, PROVIDERS, listModels, providerById, type ProviderId } from '../lib/providers'
 import { download } from '../lib/utils'
-import { toast, useConfirm, Chip } from '../components/ui'
+import { toast, useConfirm, Chip, Spinner } from '../components/ui'
 import { ISun, IMoon, IGear, ISpeaker, IDownload, ITrash, ISpark } from '../components/Icons'
 
 function Row({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -34,6 +34,43 @@ export default function SettingsPage() {
   const { confirm, dialog } = useConfirm()
   const provider = providerById(settings.aiProvider)
   const [keyDraft, setKeyDraft] = useState(settings.aiKeys?.[settings.aiProvider] ?? '')
+  const [models, setModels] = useState<string[]>([])
+  const [loadingModels, setLoadingModels] = useState(false)
+  const [modelError, setModelError] = useState('')
+
+  const savedKey = settings.aiKeys?.[settings.aiProvider] ?? ''
+
+  const fetchModels = useCallback(async () => {
+    setLoadingModels(true); setModelError(''); setModels([])
+    try {
+      const found = await listModels(resolveConfig(settings))
+      setModels(found)
+      // Providers retire models; a saved name that no longer exists would fail
+      // on every call with a confusing error, so move to something real.
+      if (found.length && !found.includes(settings.aiModel)) {
+        const def = providerById(settings.aiProvider)
+        const preferred = def.models.find(m => found.includes(m)) ?? found[0]
+        set({ aiModel: preferred })
+        toast(`"${settings.aiModel}" isn't available — switched to ${preferred}`)
+      }
+    } catch (e) {
+      setModelError(e instanceof AiError ? e.message : 'Could not list models.')
+    } finally {
+      setLoadingModels(false)
+    }
+  }, [settings])
+
+  // Ask the provider what it can run as soon as we have enough to ask with.
+  useEffect(() => {
+    setModels([]); setModelError('')
+    const def = providerById(settings.aiProvider)
+    if (def.browserBlocked) return
+    if (def.needsKey && !savedKey) return
+    if (!def.needsKey && !(settings.aiBaseUrl || def.baseUrl)) return
+    void fetchModels()
+    // Re-run when the provider or its key changes, not on every settings edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.aiProvider, savedKey, settings.aiBaseUrl])
   const [showKey, setShowKey] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -207,26 +244,50 @@ export default function SettingsPage() {
         )}
 
         <div className="field mb16">
-          <label className="label">Model</label>
-          <input
-            className="input mono" spellCheck={false} value={settings.aiModel}
-            placeholder={provider.models[0] ?? 'model-name'}
-            list="model-suggestions"
-            onChange={e => set({ aiModel: e.target.value.trim() })}
-          />
-          <datalist id="model-suggestions">
-            {provider.models.map(m => <option key={m} value={m} />)}
-          </datalist>
-          {provider.models.length > 0 && (
-            <div className="row g6 mt4 wrap-flex">
-              {provider.models.map(m => (
-                <button key={m} className="chip" onClick={() => set({ aiModel: m })}
-                        data-on={settings.aiModel === m}>
-                  {m}
-                </button>
-              ))}
-            </div>
+          <div className="row-between">
+            <label className="label">Model</label>
+            <button className="btn btn-ghost btn-sm" onClick={fetchModels} disabled={loadingModels}>
+              {loadingModels ? <><Spinner /> Loading…</> : 'Refresh list'}
+            </button>
+          </div>
+
+          {models.length > 0 ? (
+            <select className="select" value={settings.aiModel}
+                    onChange={e => set({ aiModel: e.target.value })}>
+              {!models.includes(settings.aiModel) && settings.aiModel && (
+                <option value={settings.aiModel}>{settings.aiModel} (not in list)</option>
+              )}
+              {models.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          ) : (
+            <>
+              <input
+                className="input mono" spellCheck={false} value={settings.aiModel}
+                placeholder={provider.models[0] ?? 'model-name'} list="model-suggestions"
+                onChange={e => set({ aiModel: e.target.value.trim() })}
+              />
+              <datalist id="model-suggestions">
+                {provider.models.map(m => <option key={m} value={m} />)}
+              </datalist>
+              {provider.models.length > 0 && (
+                <div className="row g6 mt4 wrap-flex">
+                  {provider.models.map(m => (
+                    <button key={m} className="chip" data-on={settings.aiModel === m}
+                            onClick={() => set({ aiModel: m })}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
+
+          <div className="hint">
+            {loadingModels ? 'Asking the provider what it can run…'
+              : models.length > 0 ? `${models.length} models available on your key.`
+              : modelError ? modelError
+              : 'Suggestions only — save a key and this becomes the provider\u2019s real list.'}
+          </div>
         </div>
 
         {provider.needsKey && (

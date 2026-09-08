@@ -55,7 +55,7 @@ export const PROVIDERS: ProviderDef[] = [
   {
     id: 'google', name: 'Google (Gemini)', wire: 'google',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-    models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
+    models: ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-pro-preview'],
     keyUrl: 'https://aistudio.google.com/apikey',
     needsKey: true, pdf: true, images: true,
     note: 'Generous free tier.',
@@ -64,7 +64,7 @@ export const PROVIDERS: ProviderDef[] = [
     id: 'openrouter', name: 'OpenRouter', wire: 'openai',
     baseUrl: 'https://openrouter.ai/api/v1',
     models: [
-      'anthropic/claude-sonnet-5', 'openai/gpt-5.1', 'google/gemini-2.5-pro',
+      'anthropic/claude-sonnet-5', 'openai/gpt-5.1', 'google/gemini-3.8-flash',
       'meta-llama/llama-3.3-70b-instruct', 'deepseek/deepseek-chat',
     ],
     keyUrl: 'https://openrouter.ai/keys',
@@ -418,4 +418,61 @@ export async function complete(req: AiRequest): Promise<string> {
 export function capabilities(id: ProviderId) {
   const d = providerById(id)
   return { pdf: d.pdf, images: d.images, name: d.name }
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Live model discovery                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ask the provider what it can actually run.
+ *
+ * Hardcoded model lists go stale the moment a provider retires something —
+ * which is exactly how `gemini-2.5-pro` ended up failing for new keys — so the
+ * suggestions in PROVIDERS are only a fallback for when this call is
+ * unavailable.
+ */
+export async function listModels(cfg: AiConfig): Promise<string[]> {
+  const def = providerById(cfg.provider)
+  const base = (cfg.baseUrl || def.baseUrl).replace(/\/+$/, '')
+  if (!base) throw new AiError('No endpoint set for this provider.')
+
+  let url: string
+  const headers: Record<string, string> = {}
+
+  if (def.wire === 'anthropic') {
+    url = `${base}/v1/models?limit=100`
+    headers['x-api-key'] = cfg.apiKey
+    headers['anthropic-version'] = '2023-06-01'
+    headers['anthropic-dangerous-direct-browser-access'] = 'true'
+  } else if (def.wire === 'google') {
+    url = `${base}/models?pageSize=200&key=${encodeURIComponent(cfg.apiKey)}`
+  } else {
+    url = `${base}/models`
+    if (cfg.apiKey.trim()) headers.authorization = `Bearer ${cfg.apiKey}`
+  }
+
+  let res: Response
+  try {
+    res = await fetch(url, { headers })
+  } catch (e) {
+    throw networkError(e, cfg)
+  }
+  if (!res.ok) throw await readError(res)
+
+  const json = await res.json() as Record<string, never>
+
+  if (def.wire === 'google') {
+    const models = (json as { models?: { name?: string; supportedGenerationMethods?: string[] }[] }).models ?? []
+    return models
+      // Embedding and TTS models share the endpoint but can't answer prompts.
+      .filter(m => !m.supportedGenerationMethods || m.supportedGenerationMethods.includes('generateContent'))
+      .map(m => (m.name ?? '').replace(/^models\//, ''))
+      .filter(Boolean)
+      .sort()
+  }
+
+  const data = (json as { data?: { id?: string }[] }).data ?? []
+  return data.map(m => m.id ?? '').filter(Boolean).sort()
 }
