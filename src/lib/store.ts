@@ -34,6 +34,7 @@ interface Actions {
   addTest: (r: Omit<TestResult, 'id' | 'at'>) => void
 
   setSettings: (patch: Partial<Settings>) => void
+  loadSamples: () => number
   importState: (data: Partial<AppState>) => void
   resetAll: () => void
 }
@@ -47,8 +48,6 @@ export const useStore = create<AppState & Actions>()(
   persist(
     (set, get) => ({
       ...emptyState,
-      sets: seedSets(),
-      folders: seedFolders(),
 
       /* ---------- sets ---------- */
       createSet: (partial) => {
@@ -192,6 +191,22 @@ export const useStore = create<AppState & Actions>()(
       /* ---------- meta ---------- */
       setSettings: (patch) => set(st => ({ settings: { ...st.settings, ...patch } })),
 
+      /** Copy the demo library in, skipping anything already added. */
+      loadSamples: () => {
+        const existing = new Set(get().sets.map(s => s.title))
+        const fresh = seedSets().filter(s => !existing.has(s.title))
+        if (!fresh.length) return 0
+        const folderIds = new Set(fresh.map(s => s.folderId).filter(Boolean) as string[])
+        set(st => ({
+          sets: [...fresh, ...st.sets],
+          folders: [
+            ...st.folders,
+            ...seedFolders().filter(f => folderIds.has(f.id) && !st.folders.some(x => x.id === f.id)),
+          ],
+        }))
+        return fresh.length
+      },
+
       importState: (data) =>
         set(st => ({
           sets: data.sets ?? st.sets,
@@ -202,7 +217,7 @@ export const useStore = create<AppState & Actions>()(
           settings: { ...st.settings, ...(data.settings ?? {}) },
         })),
 
-      resetAll: () => set({ ...emptyState, sets: seedSets(), folders: seedFolders() }),
+      resetAll: () => set({ ...emptyState }),
     }),
     {
       name: 'quizbuddy:v1',

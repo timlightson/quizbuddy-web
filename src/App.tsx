@@ -13,6 +13,7 @@ import Landing from './routes/Landing'
 import Dashboard from './routes/Dashboard'
 // The heaviest route, and not needed for first paint.
 const Create = lazy(() => import('./routes/Create'))
+const Demo = lazy(() => import('./routes/Demo'))
 import SetView from './routes/SetView'
 const SetEditor = lazy(() => import('./routes/SetEditor'))
 const Flashcards = lazy(() => import('./routes/Flashcards'))
@@ -273,6 +274,7 @@ export default function App() {
     const [a, b, c] = seg
     if (!a) return <Dashboard />
     if (a === 'create' || a === 'studio') return <Create />
+    if (a === 'demo') return <Demo />
     if (a === 'stats') return <Stats />
     if (a === 'settings') return <SettingsPage />
     if (a === 'set' && b) return c === 'edit' ? <SetEditor id={b} /> : <SetView id={b} />

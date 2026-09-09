@@ -58,6 +58,13 @@ interval, and lapse count; every mode writes back into the same schedule, so
 playing a game genuinely advances your studying. Cards you keep forgetting get
 flagged as leeches, because more repetitions won't fix those — rewording will.
 
+**Starting out** — the library starts empty, the way a live site should. A
+[demo page](https://timlightson.github.io/quizbuddy-web/#/demo) holds six
+ready-made sets (88 cards across science, languages and humanities) that you can
+flip through without signing up for anything; nothing lands in your library until
+you press the button. The landing page's preview card is the real component, not
+a screenshot — click it.
+
 **Getting cards in** — upload them to the AI Studio (below), type them by hand, or
 paste from a doc, spreadsheet, or another study app. The importer guesses your
 separator and splits on its *first* occurrence, so commas inside definitions
@@ -188,6 +195,13 @@ comes back, from ten minutes to a year out. Cards carry an easiness factor,
 interval, and lapse count; every mode writes back into the same schedule, so
 playing a game genuinely advances your studying. Cards you keep forgetting get
 flagged as leeches, because more repetitions won't fix those — rewording will.
+
+**Starting out** — the library starts empty, the way a live site should. A
+[demo page](https://timlightson.github.io/quizbuddy-web/#/demo) holds six
+ready-made sets (88 cards across science, languages and humanities) that you can
+flip through without signing up for anything; nothing lands in your library until
+you press the button. The landing page's preview card is the real component, not
+a screenshot — click it.
 
 **Getting cards in** — upload them to the AI Studio (below), type them by hand, or
 paste from a doc, spreadsheet, or another study app. The importer guesses your

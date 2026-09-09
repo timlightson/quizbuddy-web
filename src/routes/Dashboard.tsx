@@ -117,15 +117,20 @@ export default function Dashboard() {
       <div className="wrap">
         <Empty
           icon={<ICards size={22} />}
-          title="Let's make your first deck"
-          body="Upload a PDF or a photo of your notes and let AI draft the cards, or write them yourself. Everything stays on this device."
+          title="Your library is empty"
+          body="Upload a PDF or a photo of your notes and let AI draft the cards, write them yourself, or borrow a ready-made set from the demo. Everything stays on this device."
           action={
-            <div className="row g8">
-              <button className="btn btn-accent btn-lg" onClick={() => navigate('/create')}>
-                <ISpark size={16} /> Upload notes
-              </button>
-              <button className="btn btn-lg" onClick={() => navigate(`/set/${createSet()}/edit`)}>
-                <IPlus size={16} /> Start blank
+            <div className="col g10" style={{ alignItems: 'center' }}>
+              <div className="row g8 wrap-flex" style={{ justifyContent: 'center' }}>
+                <button className="btn btn-accent btn-lg" onClick={() => navigate('/create')}>
+                  <ISpark size={16} /> Upload notes
+                </button>
+                <button className="btn btn-lg" onClick={() => navigate(`/set/${createSet()}/edit`)}>
+                  <IPlus size={16} /> Start blank
+                </button>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={() => navigate('/demo')}>
+                Or browse the demo library <IChevR size={13} />
               </button>
             </div>
           }

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { DemoDeck, type DemoCard } from '../components/DemoDeck'
 import { useStore } from '../lib/store'
 import { navigate } from '../components/ui'
 import {
-  ISpark, IUpload, IBrain, IGame, ICards, IChart, ICheck, IX,
+  ISpark, IUpload, IBrain, IGame, IChart, ICheck, IX,
   IChevR, ITarget, IList, IFlame,
 } from '../components/Icons'
 
@@ -71,92 +72,48 @@ function Mark({ v }: { v: boolean | string }) {
   return <span className="muted">{v}</span>
 }
 
-/** A CSS mock of the real dashboard — no screenshot to keep in sync. */
-function Preview() {
+/** A handful of real cards, spread across subjects to show the range. */
+const PREVIEW_CARDS: DemoCard[] = [
+  { term: 'Mitochondrion', subject: 'Biology', tint: '#2fe0b0',
+    def: 'Produces ATP through cellular respiration — the powerhouse of the cell.' },
+  { term: 'Ephemeral', subject: 'SAT Vocabulary', tint: '#7c6cf0',
+    def: 'Lasting for a very short time; fleeting.' },
+  { term: 'seguir', subject: 'Spanish', tint: '#4aa8ff', lang: 'es-ES',
+    def: 'to follow / to continue' },
+  { term: 'Electronegativity', subject: 'Chemistry', tint: '#ffb020',
+    def: 'How strongly an atom attracts shared electrons in a bond. Increases up and to the right of the periodic table.' },
+  { term: 'Marbury v. Madison (1803)', subject: 'US History', tint: '#ff6b6b',
+    def: 'Established judicial review, letting the Supreme Court strike down unconstitutional laws.' },
+]
+
+/** The hero widget: real cards, really flippable, inside browser chrome. */
+function Preview({ onDemo }: { onDemo: () => void }) {
+  const [done, setDone] = useState(false)
   return (
-    <div className="lp-shot">
-      <div className="lp-bar">
-        <i className="lp-dot" style={{ background: '#ff6b6b' }} />
-        <i className="lp-dot" style={{ background: '#ffb020' }} />
-        <i className="lp-dot" style={{ background: '#2fe0b0' }} />
-        <div className="grow" />
-        <span className="fs12 dim mono">quizbuddy</span>
-        <div className="grow" />
+    <div className="lp-preview">
+      <div className="lp-shot">
+        <div className="lp-bar">
+          <i className="lp-dot" style={{ background: '#ff6b6b' }} />
+          <i className="lp-dot" style={{ background: '#ffb020' }} />
+          <i className="lp-dot" style={{ background: '#2fe0b0' }} />
+          <div className="grow" />
+          <span className="fs12 dim mono">quizbuddy</span>
+          <div className="grow" />
+        </div>
+        <div className="lp-stage">
+          <DemoDeck cards={PREVIEW_CARDS} compact onFinish={() => setDone(true)} />
+        </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '168px 1fr', minHeight: 330, textAlign: 'left' }}>
-        <div style={{ borderRight: '1px solid var(--line)', padding: 14, background: 'var(--surface-2)' }}>
-          <div className="row g8 mb16">
-            <div className="side-logo" style={{ width: 24, height: 24, fontSize: 12, borderRadius: 8 }}>Q</div>
-            <span style={{ fontWeight: 700, fontSize: 14 }}>QuizBuddy</span>
-          </div>
-          {[['Home', true], ['AI Studio', false], ['Progress', false]].map(([n, on]) => (
-            <div key={n as string} className="side-item" style={{ height: 30, fontSize: 12.5, pointerEvents: 'none' }}
-                 data-on={on}>
-              <i className="side-dot" style={{ background: on ? 'var(--accent)' : 'var(--ink-4)' }} />{n}
-            </div>
-          ))}
-          <div className="side-label" style={{ paddingTop: 12 }}>Library</div>
-          {['Biology — The Cell', 'SAT Vocabulary', 'Spanish Verbs'].map((n, i) => (
-            <div key={n} className="side-item" style={{ height: 28, fontSize: 12, pointerEvents: 'none' }}>
-              <i className="side-dot" style={{
-                background: ['linear-gradient(140deg,#7c6cf0,#4aa8ff)',
-                             'linear-gradient(140deg,#2fe0b0,#4aa8ff)',
-                             'linear-gradient(140deg,#fb923c,#ff6b6b)'][i],
-              }} />
-              <span className="trunc">{n}</span>
-            </div>
-          ))}
-        </div>
-        <div style={{ padding: 18 }}>
-          <div style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 500, letterSpacing: '-.02em' }}>
-            Good evening.
-          </div>
-          <div className="hint mt4 mb16">18 cards ready across 3 sets.</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-            {[
-              ['Upload a file', 'linear-gradient(140deg,#7c6cf0,#4aa8ff)', IUpload],
-              ['Build with AI', 'linear-gradient(140deg,#2fe0b0,#4aa8ff)', ISpark],
-              ['Flashcards', 'linear-gradient(140deg,#fb923c,#ff6b6b)', ICards],
-            ].map(([n, bg, Ic]) => {
-              const I = Ic as typeof IUpload
-              return (
-                <div key={n as string} style={{
-                  padding: 13, borderRadius: 12,
-                  background: 'var(--surface)', border: '1px solid var(--line)',
-                }}>
-                  <div className="action-ic" style={{ background: bg as string, width: 30, height: 30, borderRadius: 9, marginBottom: 9 }}>
-                    <I size={14} />
-                  </div>
-                  <div style={{ fontSize: 12.5, fontWeight: 650 }}>{n as string}</div>
-                </div>
-              )
-            })}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginTop: 12 }}>
-            {['Biology — The Cell', 'SAT Vocabulary', 'Spanish Verbs'].map((n, i) => (
-              <div key={n} style={{
-                borderRadius: 12, overflow: 'hidden',
-                border: '1px solid var(--line)', background: 'var(--surface)',
-              }}>
-                <div style={{
-                  height: 52, padding: 10, display: 'flex', alignItems: 'flex-end', color: '#fff',
-                  background: ['linear-gradient(140deg,#7c6cf0,#4aa8ff)',
-                               'linear-gradient(140deg,#2fe0b0,#4aa8ff)',
-                               'linear-gradient(140deg,#fb923c,#ff6b6b)'][i],
-                  fontSize: 11.5, fontWeight: 700,
-                }}>
-                  <span className="trunc">{n}</span>
-                </div>
-                <div style={{ padding: 10 }}>
-                  <div className="mseg" style={{ height: 5 }}>
-                    <i style={{ width: `${[62, 38, 80][i]}%`, background: 'var(--m4)' }} />
-                    <i style={{ width: '22%', background: 'var(--m2)' }} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+
+      <div className="lp-under">
+        <span className="hint">
+          {done
+            ? 'That’s the whole sample — there are six full sets in the demo.'
+            : 'Go on, click the card. This one’s real.'}
+        </span>
+        <button className="lp-demolink" onClick={onDemo}>
+          Demo the full site <IChevR size={14} />
+        </button>
       </div>
     </div>
   )
@@ -164,7 +121,6 @@ function Preview() {
 
 export default function Landing() {
   const setSettings = useStore(s => s.setSettings)
-  const sets = useStore(s => s.sets)
   const [stuck, setStuck] = useState(false)
 
   useEffect(() => {
@@ -179,12 +135,14 @@ export default function Landing() {
     setSettings({ onboarded: true })
     navigate('/')
   }
+  const toDemo = () => {
+    setSettings({ onboarded: true })
+    navigate('/demo')
+  }
   const toStudio = () => {
     setSettings({ onboarded: true })
     navigate('/create')
   }
-
-  const cards = sets.reduce((n, s) => n + s.cards.length, 0)
 
   return (
     <div className="lp">
@@ -218,8 +176,8 @@ export default function Landing() {
             <button className="btn btn-accent btn-lg" onClick={toStudio}>
               <ISpark size={16} /> Upload your notes
             </button>
-            <button className="btn btn-lg" onClick={enter}>
-              Explore {cards} sample cards
+            <button className="btn btn-lg" onClick={toDemo}>
+              Try the demo
             </button>
           </div>
           <div className="row g16 mt16 wrap-flex" style={{ justifyContent: 'center' }}>
@@ -227,7 +185,7 @@ export default function Landing() {
             <span className="hint row g6"><ICheck size={13} style={{ color: 'var(--green)' }} /> No sign-up</span>
             <span className="hint row g6"><ICheck size={13} style={{ color: 'var(--green)' }} /> Open source</span>
           </div>
-          <Preview />
+          <Preview onDemo={toDemo} />
         </header>
 
         <section className="lp-section">
