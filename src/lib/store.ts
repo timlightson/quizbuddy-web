@@ -221,7 +221,31 @@ export const useStore = create<AppState & Actions>()(
     }),
     {
       name: 'quizbuddy:v1',
-      version: 1,
+      version: 2,
+      /**
+       * v1 dropped the sample sets into everyone's library on first load. They
+       * live on the demo page now, so clear the ones nobody touched — anything
+       * studied, starred, or edited is the user's own work and stays put.
+       */
+      migrate: (persisted, from) => {
+        const p = (persisted ?? {}) as Partial<AppState>
+        if (from >= 2 || !p.sets?.length) return p
+
+        const bySampleTitle = new Map(seedSets().map(x => [x.title, x]))
+        p.sets = p.sets.filter(set => {
+          const sample = bySampleTitle.get(set.title)
+          if (!sample) return true
+          const cards = set.cards ?? []
+          if (cards.length !== sample.cards.length) return true
+          return cards.some(c => c.seen > 0 || c.due !== null || c.starred)
+        })
+
+        // Drop the sample folders too, unless a surviving set still needs one.
+        const stillUsed = new Set(p.sets.map(x => x.folderId))
+        p.folders = (p.folders ?? [])
+          .filter(f => !f.id.startsWith('seed-folder-') || stillUsed.has(f.id))
+        return p
+      },
       // Recompute cached mastery on load so a schema tweak can't leave stale badges.
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>
