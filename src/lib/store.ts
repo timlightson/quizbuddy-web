@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { AppState, Card, Folder, GameKind, ID, Settings, StudySet, TestResult } from './types'
 import { DEFAULT_SETTINGS } from './types'
 import { masteryOf, schedule, type Grade } from './srs'
+import { delatex } from './latex'
 import { dayKey, uid } from './utils'
 import { blankCard, blankSet, freshCard } from './factory'
 import { seedFolders, seedSets } from './seed'
@@ -216,7 +217,14 @@ export const useStore = create<AppState & Actions>()(
         if (st.apiKey && !st.aiKeys.anthropic) st.aiKeys.anthropic = st.apiKey
         merged.sets = (merged.sets ?? []).map(s => ({
           ...s,
-          cards: (s.cards ?? []).map(c => ({ ...c, mastery: masteryOf(c) })),
+          cards: (s.cards ?? []).map(c => {
+            // Decks generated before LaTeX was normalised still carry raw
+            // markup; delatex leaves anything else exactly as written.
+            const term = delatex(c.term)
+            const def = delatex(c.def)
+            const hint = c.hint ? delatex(c.hint) : c.hint
+            return { ...c, term, def, hint, mastery: masteryOf(c) }
+          }),
         }))
         return merged
       },

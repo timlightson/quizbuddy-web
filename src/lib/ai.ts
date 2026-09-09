@@ -1,6 +1,7 @@
 import type { Card, Settings } from './types'
 import type { Source } from './extract'
 import { blankCard } from './factory'
+import { delatex } from './latex'
 import {
   AiError, complete, parseJson, providerById,
   type AiConfig, type AiMessage,
@@ -71,6 +72,8 @@ const CARD_RULES =
   'The message field is what the student reads: one or two sentences on what you made ' +
   'and anything they should know. Do not list the cards back in it — they can see them. ' +
   'When asked to revise, return the full corrected set, not a diff.\n\n' +
+  'Write formulas, symbols, and equations as plain Unicode text — H₂O, δ⁻, Δ G, ' +
+  '6.02 × 10²³, α-helix. Never use LaTeX, dollar-sign math, or backslash commands.\n\n' +
   'Reply with JSON only: {"message": string, "cards": [{"term","def","hint"}]}.'
 
 /* ------------------------------------------------------------------ */
@@ -164,30 +167,34 @@ export interface NoteTool {
   system: string
 }
 
+const PLAIN_MATH =
+  ' Write formulas and symbols as plain Unicode text (H₂O, δ⁻, Δ G, 6.02 × 10²³, ≤, →).' +
+  ' Never use LaTeX, dollar-sign math, or backslash commands.'
+
 export const NOTE_TOOLS: NoteTool[] = [
   {
     id: 'summary', name: 'Summarize', blurb: 'The whole thing, condensed to what matters.',
-    system: 'Summarize the material for a student revising it. Lead with the single most important idea. Use short sections with headings, and keep it well under the length of the original. Markdown.',
+    system: 'Summarize the material for a student revising it. Lead with the single most important idea. Use short sections with headings, and keep it well under the length of the original. Markdown.' + PLAIN_MATH,
   },
   {
     id: 'outline', name: 'Study guide', blurb: 'A structured guide you can revise from.',
-    system: 'Write a study guide from the material: the main topics, the key points under each, and the terms worth memorising. Structure it so a student can work top to bottom the night before a test. Markdown with headings and bullets.',
+    system: 'Write a study guide from the material: the main topics, the key points under each, and the terms worth memorising. Structure it so a student can work top to bottom the night before a test. Markdown with headings and bullets.' + PLAIN_MATH,
   },
   {
     id: 'exam', name: 'Practice questions', blurb: 'Written questions with an answer key.',
-    system: 'Write practice exam questions from the material — a mix of recall, application, and one or two that require synthesis. Number them, then give a separate answer key at the end. Markdown.',
+    system: 'Write practice exam questions from the material — a mix of recall, application, and one or two that require synthesis. Number them, then give a separate answer key at the end. Markdown.' + PLAIN_MATH,
   },
   {
     id: 'gaps', name: 'Find the gaps', blurb: 'What your notes skip or leave vague.',
-    system: 'Read the material as an examiner would and identify what is missing, vague, or likely to be tested but under-covered. Be specific and cite what the notes do say. If the notes are actually thorough, say so plainly rather than inventing problems. Markdown.',
+    system: 'Read the material as an examiner would and identify what is missing, vague, or likely to be tested but under-covered. Be specific and cite what the notes do say. If the notes are actually thorough, say so plainly rather than inventing problems. Markdown.' + PLAIN_MATH,
   },
   {
     id: 'explain', name: 'Explain simply', blurb: 'The hard parts, in plain language.',
-    system: 'Identify the two or three hardest ideas in the material and explain each in plain language, using a concrete analogy where one genuinely helps. Do not oversimplify to the point of being wrong. Markdown.',
+    system: 'Identify the two or three hardest ideas in the material and explain each in plain language, using a concrete analogy where one genuinely helps. Do not oversimplify to the point of being wrong. Markdown.' + PLAIN_MATH,
   },
   {
     id: 'mnemonics', name: 'Memory hooks', blurb: 'Mnemonics for the things that never stick.',
-    system: 'Produce memory aids for the facts in this material that are hardest to retain — acronyms, word roots, vivid images, or links to familiar things. One hook per item, and only for items that genuinely need one. Markdown.',
+    system: 'Produce memory aids for the facts in this material that are hardest to retain — acronyms, word roots, vivid images, or links to familiar things. One hook per item, and only for items that genuinely need one. Markdown.' + PLAIN_MATH,
   },
 ]
 
@@ -231,9 +238,15 @@ export async function studioTurn(
   const parsed = parseJson<StudioReply>(raw)
   return {
     message: parsed.message?.trim() || 'Done.',
+    // Cards render as plain text everywhere, so LaTeX is normalised here
+    // rather than at each display site.
     cards: (parsed.cards ?? [])
       .filter(c => c?.term?.trim() && c?.def?.trim())
-      .map(c => ({ term: c.term.trim(), def: c.def.trim(), hint: (c.hint ?? '').trim() })),
+      .map(c => ({
+        term: delatex(c.term).trim(),
+        def: delatex(c.def).trim(),
+        hint: delatex(c.hint ?? '').trim(),
+      })),
   }
 }
 
@@ -271,7 +284,7 @@ export async function askAboutNotes(
     system:
       'You answer a student\'s questions about their own course material. Answer from the ' +
       'material where it covers the question, and say plainly when it does not and you are ' +
-      'drawing on general knowledge instead. Be direct and concrete; skip preamble.',
+      'drawing on general knowledge instead. Be direct and concrete; skip preamble.' + PLAIN_MATH,
     messages: [...history, { role: 'user', text: question }],
     sources,
     signal,

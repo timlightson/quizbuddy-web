@@ -5,6 +5,8 @@
  * inject markup — which matters because this text is not authored by us.
  */
 
+import { delatex } from './latex'
+
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -15,7 +17,10 @@ function inline(s: string): string {
     .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
 }
 
-export function renderMd(src: string): string {
+export function renderMd(raw: string): string {
+  // Models emit LaTeX for anything scientific; turn it into Unicode before
+  // rendering so `$\\text{H}_2\\text{O}$` reads as H₂O.
+  const src = delatex(raw)
   const out: string[] = []
   let list: 'ul' | 'ol' | null = null
   let fence = false
